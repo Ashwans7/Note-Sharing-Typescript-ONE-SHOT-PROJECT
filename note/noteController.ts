@@ -1,30 +1,93 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import noteModel from "./noteModel.js";
 import envConfig from "../src/Config/config.js";
+import createHttpError from "http-errors";
 
-
-
-const createNote = async (req:Request,res:Response) =>{
- try {
-       const file = req.file ? `${envConfig.backendurl}/${req.filename}` : 'https://www.google.com/imgres?q=naruto&imgurl=https%3A%2F%2Feasydrawingguides.com%2Fwp-content%2Fuploads%2F2017%2F05%2Fhow-to-draw-naruto-20.png&imgrefurl=https%3A%2F%2Feasydrawingguides.com%2Fhow-to-draw-naruto%2F&docid=8quJtQcRJGxZYM&tbnid=iwYmBvuJH6tIIM&vet=12ahUKEwjft6Ga1aeUAxXOi2MGHc34EPIQnPAOegQIFxAB..i&w=678&h=600&hcb=2&ved=2ahUKEwjft6Ga1aeUAxXOi2MGHc34EPIQnPAOegQIFxAB'
-    const {title,subtitle,description} = req.body
-    if (!title || !subtitle || !description){
-        res.status(200).json({
-            message : "Please provide title,description,subtitle"
+const createNote = async (req:Request,res:Response,next:NextFunction)=>{
+   try {
+    const file = req.file ? `${envConfig.backendurl}/${req.file.filename}` : 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSGdn5ODMa1UxSL5a172LJpZn6EjIX5THCdmA&s'
+    const {title,subtitle,description} = req.body 
+    if(!title || !subtitle || !description ){
+        res.status(400).json({
+            message : "Please provide title,subtitle,description"
         })
         return
     }
     await noteModel.create({
-        title,
-        subtitle,
-        description,
+        title, 
+        subtitle, 
+        description , 
         file
     })
-    res.status(201).json({
-        message : "Note Created"
+
+    res.status(200).json({
+      message: "Note Created",
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    return next(
+      createHttpError(500, "Error while creating")
+    );
+  }
+};
+//allnotes
+const listNotes = async(req:Request,res:Response,next:NextFunction)=>{
+   try {
+     const notes = await noteModel.find()
+    res.status(200).json({
+        message : "Notes Fetched",
+        data : notes
     })
- } catch (error) {
-     console.log(error)
-    
- }
+   } catch (error) {
+    return next(createHttpError(500,"Error while fetching"))
+   }
 }
+//singlenotes
+const listNote = async(req:Request,res:Response,next:NextFunction)=>{
+   try {
+    const {id} = req.params
+     const note = await noteModel.findById(id)
+     if(!note){
+        return next(createHttpError(404,"Note not found with the given id"))
+     }
+    res.status(200).json({
+        message : "Notes Fetched",
+        data : note
+    })
+   } catch (error) {
+    return next(createHttpError(500,"Error while fetching"))
+   }
+}
+
+const deleteNote = async(req:Request,res:Response,next:NextFunction)=>{
+   try {
+    const {id} = req.params
+     await noteModel.findByIdAndDelete(id)
+    res.status(200).json({
+        message : "Notes deleted"
+    })
+   } catch (error) {
+    return next(createHttpError(500,"Error while fetching"))
+   }
+}
+
+// const  updateNote = async(req:Request,res:Response,next:NextFunction)=>{
+//     try {
+//         const {id} = req.params
+//        const updatedNotes = await noteModel.findByIdAndUpdate()
+//        res.status(200).json({
+//         message : "Notes Updated",
+//         data : updatedNotes
+//        })
+        
+//     } catch (error) {
+//         return
+//         next(createHttpError(500,"Error while fetching"))
+        
+//     }
+// }
+
+
+export { createNote,listNote,listNotes,deleteNote };
